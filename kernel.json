@@ -1,0 +1,10 @@
+{
+  "id": "isaacmenardmytraffic/newsletter-llm",
+  "title": "newsletter-llm",
+  "code_file": "newsletter-llm.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true
+}

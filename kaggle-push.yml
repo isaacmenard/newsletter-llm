@@ -1,0 +1,46 @@
+name: Kaggle Push (Save New Version)
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Version message'
+        required: false
+        default: 'bump from Sheets'
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kernel project
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Kaggle CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install kaggle==1.6.17
+
+      - name: Configure Kaggle credentials
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          mkdir -p ~/.kaggle
+          printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+
+      - name: Sanity check kernel.json
+        run: |
+          test -f kernel.json || (echo "kernel.json missing at repo root"; exit 1)
+          grep -q '"id": *"isaacmenardmytraffic/newsletter-llm"' kernel.json || (echo "kernel id mismatch"; cat kernel.json; exit 1)
+
+      - name: Push kernel (creates new version)
+        run: |
+          kaggle --version
+          kaggle kernels push -p .
+          echo "Pushed new version with message: ${{ github.event.inputs.message }}"

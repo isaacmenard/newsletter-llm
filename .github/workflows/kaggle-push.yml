@@ -37,13 +37,19 @@ jobs:
           printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
 
+      - name: Prepare Kaggle metadata filename
+        run: |
+          if [ -f "$KERNEL_PATH/kernel.json" ] && [ ! -f "$KERNEL_PATH/kernel-metadata.json" ]; then
+            cp "$KERNEL_PATH/kernel.json" "$KERNEL_PATH/kernel-metadata.json"
+          fi
+
       - name: Sanity checks
         run: |
-          test -f "$KERNEL_PATH/kernel.json" || (echo "::error::kernel.json not found in $KERNEL_PATH"; exit 1)
-          CODE_FILE=$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("code_file",""))' "$KERNEL_PATH/kernel.json")
+          test -f "$KERNEL_PATH/kernel-metadata.json" || (echo "::error::kernel-metadata.json not found"; exit 1)
+          CODE_FILE=$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("code_file",""))' "$KERNEL_PATH/kernel-metadata.json")
           echo "code_file=$CODE_FILE"
           test -n "$CODE_FILE" && test -f "$KERNEL_PATH/$CODE_FILE" || (echo "::error::Notebook missing: $CODE_FILE"; exit 1)
-          grep -q '"id": *"'"$KERNEL_ID"'"' "$KERNEL_PATH/kernel.json" || (echo "::error::kernel id mismatch (expected $KERNEL_ID)"; exit 1)
+          grep -q '"id": *"'"$KERNEL_ID"'"' "$KERNEL_PATH/kernel-metadata.json" || (echo "::error::kernel id mismatch (expected $KERNEL_ID)"; exit 1)
 
       - name: Push kernel (create new version)
         run: |

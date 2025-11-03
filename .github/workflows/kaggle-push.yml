@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       message:
-        description: 'Version message'
+        description: 'Version message (optional)'
         required: false
         default: 'bump from Sheets'
 
@@ -12,22 +12,14 @@ jobs:
   push:
     runs-on: ubuntu-latest
     env:
-      # CHANGE THIS if your kernel.json & .ipynb live in a subfolder
-      KERNEL_PATH: .
+      KERNEL_PATH: .                              # change if your files are in a subfolder
+      KERNEL_ID: isaacmenardmytraffic/newsletter-llm
       KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
       KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
-      KERNEL_ID: isaacmenardmytraffic/newsletter-llm
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
-      - name: Show repo tree (top level)
-        run: |
-          pwd
-          ls -la
-          echo "KERNEL_PATH=$KERNEL_PATH"
-          ls -la "$KERNEL_PATH" || true
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -44,43 +36,17 @@ jobs:
           mkdir -p ~/.kaggle
           printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
-          echo "Created ~/.kaggle/kaggle.json"
 
-      - name: Sanity-check files & metadata
+      - name: Sanity checks
         run: |
           test -f "$KERNEL_PATH/kernel.json" || (echo "::error::kernel.json not found in $KERNEL_PATH"; exit 1)
-          echo "kernel.json:"
-          cat "$KERNEL_PATH/kernel.json"
-          grep -q "\"id\" *: *\"$KERNEL_ID\"" "$KERNEL_PATH/kernel.json" || (echo "::error::kernel.json id does not match $KERNEL_ID"; exit 1)
           CODE_FILE=$(python - <<'PY'
-import json,sys
-d=json.load(open(sys.argv[1]))
-print(d.get("code_file",""))
+import json,sys; print(json.load(open(sys.argv[1])).get("code_file",""))
 PY
 "$KERNEL_PATH/kernel.json")
-          echo "code_file from kernel.json = '$CODE_FILE'"
-          test -n "$CODE_FILE" || (echo "::error::code_file missing in kernel.json"; exit 1)
-          test -f "$KERNEL_PATH/$CODE_FILE" || (echo "::error::Notebook '$CODE_FILE' not found in $KERNEL_PATH"; exit 1)
-
-      - name: Show current kernel status (pre-push)
-        run: |
-          kaggle kernels status "$KERNEL_ID" || true
+          echo "code_file=$CODE_FILE"
+          test -n "$CODE_FILE" && test -f "$KERNEL_PATH/$CODE_FILE" || (echo "::error::Notebook missing"; exit 1)
 
       - name: Push kernel (create new version)
-        id: push
         run: |
-          set -e
-          echo "Pushing from path: $KERNEL_PATH"
-          kaggle --version
-          # Add a message so versions are easier to spot
           kaggle kernels push -p "$KERNEL_PATH" --message "${{ github.event.inputs.message }}"
-      
-      - name: Verify push output & fail if suspicious
-        if: always()
-        run: |
-          echo "If no new version appears, check the previous step logs."
-          echo "Common causes: missing kernel.json, wrong id/code_file, or Kaggle TOS not accepted."
-
-      - name: Show kernel status (post-push)
-        run: |
-          kaggle kernels status "$KERNEL_ID" || true

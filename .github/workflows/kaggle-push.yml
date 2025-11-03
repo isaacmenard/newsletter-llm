@@ -12,8 +12,11 @@ jobs:
   push:
     runs-on: ubuntu-latest
     env:
-      KERNEL_PATH: .                              # change if your files are in a subfolder
+      # path that contains kernel.json + notebook:
+      KERNEL_PATH: .
+      # your Kaggle kernel id:
       KERNEL_ID: isaacmenardmytraffic/newsletter-llm
+      # injected from repo → Settings → Secrets → Actions
       KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
       KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
 

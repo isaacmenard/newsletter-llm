@@ -48,4 +48,4 @@ jobs:
       - name: Push kernel (create new version)
         run: |
           kaggle --version
-          kaggle kernels push -p "$KERNEL_PATH" --message "${{ github.event.inputs.message }}"
+          kaggle kernels push -p "$KERNEL_PATH"

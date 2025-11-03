@@ -4,19 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       message:
-        description: 'Version message (optional)'
+        description: "Version message (optional)"
         required: false
-        default: 'bump from Sheets'
+        default: "bump from Sheets"
 
 jobs:
   push:
     runs-on: ubuntu-latest
     env:
-      # path that contains kernel.json + notebook:
-      KERNEL_PATH: .
-      # your Kaggle kernel id:
+      KERNEL_PATH: .                           # change if your files are in a subfolder
       KERNEL_ID: isaacmenardmytraffic/newsletter-llm
-      # injected from repo → Settings → Secrets → Actions
       KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
       KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
 
@@ -27,7 +24,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install Kaggle CLI
         run: |
@@ -43,13 +40,12 @@ jobs:
       - name: Sanity checks
         run: |
           test -f "$KERNEL_PATH/kernel.json" || (echo "::error::kernel.json not found in $KERNEL_PATH"; exit 1)
-          CODE_FILE=$(python - <<'PY'
-import json,sys; print(json.load(open(sys.argv[1])).get("code_file",""))
-PY
-"$KERNEL_PATH/kernel.json")
+          CODE_FILE=$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("code_file",""))' "$KERNEL_PATH/kernel.json")
           echo "code_file=$CODE_FILE"
-          test -n "$CODE_FILE" && test -f "$KERNEL_PATH/$CODE_FILE" || (echo "::error::Notebook missing"; exit 1)
+          test -n "$CODE_FILE" && test -f "$KERNEL_PATH/$CODE_FILE" || (echo "::error::Notebook missing: $CODE_FILE"; exit 1)
+          grep -q '"id": *"'"$KERNEL_ID"'"' "$KERNEL_PATH/kernel.json" || (echo "::error::kernel id mismatch (expected $KERNEL_ID)"; exit 1)
 
       - name: Push kernel (create new version)
         run: |
+          kaggle --version
           kaggle kernels push -p "$KERNEL_PATH" --message "${{ github.event.inputs.message }}"
